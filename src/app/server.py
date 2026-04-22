@@ -34,7 +34,7 @@ class AgentApplication:
 
     @property
     def wechat_official_active_reply_enabled(self) -> bool:
-        return self.wechat_official_api.enabled
+        return self.config.wechat_official_reply_mode == "active" and self.wechat_official_api.enabled
 
     def handle_chat(self, *, message: str, session_id: str | None, memory_id: str | None = None) -> dict:
         session = self.store.get_or_create(session_id, memory_id=memory_id)
@@ -91,8 +91,9 @@ class AgentApplication:
 
         try:
             self.wechat_official_api.send_text_message(open_id=open_id, content=reply_text[:600])
+            print(f"[wechat_official] active reply sent to {open_id}", flush=True)
         except WeChatOfficialApiError as exc:
-            print(f"[wechat_official] active reply failed for {open_id}: {exc}")
+            print(f"[wechat_official] active reply failed for {open_id}: {exc}", flush=True)
 
 
 class AgentRequestHandler(BaseHTTPRequestHandler):
@@ -146,6 +147,7 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
                     "memory_summary_available": bool(render_memory_prompt(default_memory)),
                     "wechat_official_configured": bool(self.app.config.wechat_official_token),
                     "wechat_official_active_reply_enabled": self.app.wechat_official_active_reply_enabled,
+                    "wechat_official_reply_mode": self.app.config.wechat_official_reply_mode,
                     "wechat_official_path": self.app.config.wechat_official_path,
                 },
             )
@@ -315,6 +317,8 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
                 self._write_xml(HTTPStatus.OK, reply)
                 return
 
+            print(f"[wechat_official] incoming text from {from_user}: {user_message[:80]!r}", flush=True)
+
             if self.app.wechat_official_active_reply_enabled:
                 self.app.enqueue_wechat_official_reply(open_id=from_user, message=user_message)
                 self._write_plain_text(HTTPStatus.OK, "success")
@@ -336,6 +340,7 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
                 from_user=to_user,
                 content=handled["result"].assistant_text[:600],
             )
+            print(f"[wechat_official] passive reply ready for {from_user}", flush=True)
             self._write_xml(HTTPStatus.OK, reply)
             return
 
@@ -412,5 +417,6 @@ def run() -> None:
     print(f"LLM key configured: {bool(config.llm_api_key)}")
     print(f"Admin UI: http://{config.agent_host}:{config.agent_port}/admin")
     print(f"WeChat official callback path: {config.wechat_official_path}")
-    print(f"WeChat official active reply enabled: {app.wechat_official_active_reply_enabled}")
+    print(f"WeChat official reply mode: {config.wechat_official_reply_mode}", flush=True)
+    print(f"WeChat official active reply enabled: {app.wechat_official_active_reply_enabled}", flush=True)
     server.serve_forever()
