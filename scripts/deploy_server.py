@@ -75,6 +75,35 @@ def tracked_files() -> list[Path]:
     return [PROJECT_ROOT / line for line in result.stdout.splitlines() if line.strip()]
 
 
+def untracked_files() -> list[Path]:
+    result = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return [PROJECT_ROOT / line for line in result.stdout.splitlines() if line.strip()]
+
+
+def private_sync_files() -> list[Path]:
+    persona_dir = PROJECT_ROOT / "data" / "persona"
+    if not persona_dir.exists():
+        return []
+    return [path for path in persona_dir.rglob("*") if path.is_file()]
+
+
+def files_to_sync() -> list[Path]:
+    seen: set[Path] = set()
+    ordered: list[Path] = []
+    for file_path in tracked_files() + untracked_files() + private_sync_files():
+        if file_path in seen:
+            continue
+        seen.add(file_path)
+        ordered.append(file_path)
+    return ordered
+
+
 def ensure_remote_dirs(sftp, remote_root: str, rel_path: Path) -> None:
     remote_parent = posixpath.dirname(posixpath.join(remote_root, *rel_path.parts))
     stack: list[str] = []
@@ -89,7 +118,7 @@ def ensure_remote_dirs(sftp, remote_root: str, rel_path: Path) -> None:
 
 
 def upload_files(sftp, remote_root: str) -> None:
-    for file_path in tracked_files():
+    for file_path in files_to_sync():
         rel_path = file_path.relative_to(PROJECT_ROOT)
         remote_path = posixpath.join(remote_root, *rel_path.parts)
         ensure_remote_dirs(sftp, remote_root, rel_path)
@@ -132,6 +161,7 @@ def run_sync(args: argparse.Namespace) -> None:
                 f"{args.remote_root}/data/sessions",
                 f"{args.remote_root}/data/memory",
                 f"{args.remote_root}/data/channels",
+                f"{args.remote_root}/data/persona",
             ]:
                 try:
                     sftp.mkdir(directory)
