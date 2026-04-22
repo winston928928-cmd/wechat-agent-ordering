@@ -11,6 +11,7 @@ from .channel_store import ChannelBindingStore
 from .config import AppConfig
 from .llm_client import ChatCompletionsClient, LLMClientError
 from .memory_store import MemoryStore, render_memory_prompt
+from .persona_prompt import build_agent_instructions
 from .session_store import SessionStore
 from .wechat_official import build_text_reply, is_subscribe_event, is_text_message, parse_message, verify_signature
 from .wechat_official_api import WeChatOfficialApiClient, WeChatOfficialApiError
@@ -22,7 +23,10 @@ class AgentApplication:
         self.store = SessionStore(config.session_dir)
         self.memory_store = MemoryStore(config.memory_path)
         self.channel_bindings = ChannelBindingStore(config.channel_binding_path)
-        self.instructions = config.prompt_path.read_text(encoding="utf-8")
+        self.instructions, self.persona_prompt_loaded = build_agent_instructions(
+            base_prompt_path=config.prompt_path,
+            persona_prompt_path=config.persona_prompt_path,
+        )
         self.client = ChatCompletionsClient(config, self.instructions)
         self.wechat_official_api = WeChatOfficialApiClient(
             app_id=config.wechat_official_app_id,
@@ -145,6 +149,7 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
                     "api_key_configured": bool(self.app.config.llm_api_key),
                     "memory_enabled": True,
                     "memory_summary_available": bool(render_memory_prompt(default_memory)),
+                    "persona_prompt_loaded": self.app.persona_prompt_loaded,
                     "wechat_official_configured": bool(self.app.config.wechat_official_token),
                     "wechat_official_active_reply_enabled": self.app.wechat_official_active_reply_enabled,
                     "wechat_official_reply_mode": self.app.config.wechat_official_reply_mode,
@@ -416,6 +421,7 @@ def run() -> None:
     print(f"Model: {config.llm_model}")
     print(f"LLM key configured: {bool(config.llm_api_key)}")
     print(f"Admin UI: http://{config.agent_host}:{config.agent_port}/admin")
+    print(f"Persona prompt loaded: {app.persona_prompt_loaded}", flush=True)
     print(f"WeChat official callback path: {config.wechat_official_path}")
     print(f"WeChat official reply mode: {config.wechat_official_reply_mode}", flush=True)
     print(f"WeChat official active reply enabled: {app.wechat_official_active_reply_enabled}", flush=True)
