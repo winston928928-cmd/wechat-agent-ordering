@@ -37,7 +37,7 @@ cp .env.example .env
 ```env
 LLM_PROVIDER=dashscope
 DASHSCOPE_API_KEY=你的百炼Key
-AGENT_NAME=暖心搭子
+AGENT_NAME=陪你说说话
 WECHAT_OFFICIAL_TOKEN=你公众号后台配置的Token
 WECHAT_OFFICIAL_APP_ID=你的公众号AppID
 WECHAT_OFFICIAL_APP_SECRET=你的公众号AppSecret
