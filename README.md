@@ -108,6 +108,8 @@ $env:WECHAT_OFFICIAL_APP_SECRET="你的公众号 AppSecret"
 - `static/index.html`：本地聊天页
 - `static/admin.html`：自用后台
 - `prompts/chat_agent.md`：陪聊型 Agent 提示词
+- `compose.yaml`：Docker 部署入口
+- `docs/deployment.md`：云服务器部署说明
 
 ## 当前接口
 
