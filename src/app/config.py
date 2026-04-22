@@ -37,6 +37,7 @@ class AppConfig:
     wechat_official_path: str
     wechat_official_app_id: str
     wechat_official_app_secret: str
+    wechat_official_reply_mode: str
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -60,7 +61,7 @@ class AppConfig:
             llm_history_turns=int(os.getenv("LLM_HISTORY_TURNS", "24")),
             agent_host=os.getenv("AGENT_HOST", "127.0.0.1").strip(),
             agent_port=int(os.getenv("AGENT_PORT", "8787")),
-            agent_name=os.getenv("AGENT_NAME", "陪你说说话").strip(),
+            agent_name=os.getenv("AGENT_NAME", "陪伴型助手").strip(),
             session_dir=session_dir,
             memory_path=memory_path,
             channel_binding_path=channel_binding_path,
@@ -72,6 +73,9 @@ class AppConfig:
             or "/wechat/official/callback",
             wechat_official_app_id=os.getenv("WECHAT_OFFICIAL_APP_ID", "").strip(),
             wechat_official_app_secret=os.getenv("WECHAT_OFFICIAL_APP_SECRET", "").strip(),
+            wechat_official_reply_mode=normalize_wechat_reply_mode(
+                os.getenv("WECHAT_OFFICIAL_REPLY_MODE", "passive")
+            ),
         )
 
 
@@ -89,3 +93,8 @@ def resolve_api_key(provider: str) -> str:
         return os.getenv(provider_key_env, "").strip()
 
     return ""
+
+
+def normalize_wechat_reply_mode(value: str) -> str:
+    mode = value.strip().lower()
+    return mode if mode in {"passive", "active"} else "passive"
