@@ -8,6 +8,7 @@
 - 本地多轮对话
 - 本地 JSON 会话存储
 - 长期记忆提取与后台手动编辑
+- 会话级 / 用户级长期记忆隔离
 - 自用聊天页 `/`
 - 自用后台 `/admin`
 - 公众号回调接入
@@ -96,6 +97,7 @@ $env:WECHAT_OFFICIAL_APP_SECRET="你的公众号 AppSecret"
 
 2. 长期记忆  
 系统会从对话里抽取稳定信息，比如称呼、喜欢、不喜欢、地点、身份角色；你也可以在 `/admin` 里手动改。
+现在默认支持按会话或按微信用户隔离长期记忆，不会把不同用户混到一起。
 
 ## 主要文件
 
@@ -110,6 +112,8 @@ $env:WECHAT_OFFICIAL_APP_SECRET="你的公众号 AppSecret"
 - `prompts/chat_agent.md`：陪聊型 Agent 提示词
 - `compose.yaml`：Docker 部署入口
 - `docs/deployment.md`：云服务器部署说明
+- `docs/server-ops.md`：当前服务器运维脚本说明
+- `scripts/deploy_server.py`：同步代码到服务器并重启服务
 
 ## 当前接口
 
