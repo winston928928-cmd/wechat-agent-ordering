@@ -32,6 +32,7 @@ class AppConfig:
     channel_binding_path: Path
     wechat_official_token_cache_path: Path
     prompt_path: Path
+    persona_prompt_path: Path
     static_dir: Path
     wechat_official_token: str
     wechat_official_path: str
@@ -47,6 +48,7 @@ class AppConfig:
         channel_binding_path = project_root / "data" / "channels" / "bindings.json"
         wechat_official_token_cache_path = project_root / "data" / "channels" / "wechat_official_token.json"
         prompt_path = project_root / "prompts" / "chat_agent.md"
+        persona_prompt_path = project_root / "data" / "persona" / "compiled_persona_prompt.md"
         static_dir = project_root / "static"
         llm_provider = os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER).strip().lower() or DEFAULT_PROVIDER
         llm_base_url = (os.getenv("LLM_BASE_URL", "").strip() or DEFAULT_PROVIDER_BASE_URLS.get(llm_provider, "")).rstrip("/")
@@ -67,6 +69,9 @@ class AppConfig:
             channel_binding_path=channel_binding_path,
             wechat_official_token_cache_path=wechat_official_token_cache_path,
             prompt_path=prompt_path,
+            persona_prompt_path=Path(
+                os.getenv("PERSONA_PROMPT_PATH", str(persona_prompt_path)).strip() or str(persona_prompt_path)
+            ),
             static_dir=static_dir,
             wechat_official_token=os.getenv("WECHAT_OFFICIAL_TOKEN", "").strip(),
             wechat_official_path=os.getenv("WECHAT_OFFICIAL_PATH", "/wechat/official/callback").strip()
