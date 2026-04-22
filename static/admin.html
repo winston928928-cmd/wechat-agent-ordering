@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>暖心搭子后台</title>
+  <style>
+    :root {
+      --bg: #f2ede3;
+      --card: rgba(255, 251, 244, 0.92);
+      --line: #d8cfbd;
+      --text: #2f241d;
+      --muted: #7a695b;
+      --accent: #bb6a38;
+      --soft: #f5e4cb;
+      --soft-2: #f8efd6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(187, 106, 56, 0.18), transparent 26%),
+        linear-gradient(180deg, #f8f5ee 0%, var(--bg) 100%);
+    }
+    .shell {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 24px 16px 32px;
+    }
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: 30px; }
+    .sub { margin-top: 8px; color: var(--muted); font-size: 14px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn, button {
+      border: 0;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    .ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+    }
+    .detail {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 12px 34px rgba(73, 44, 22, 0.08);
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.54);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .card-head h2 { margin: 0; font-size: 16px; }
+    .card-body { padding: 16px; }
+    .meta { color: var(--muted); font-size: 12px; }
+    input, textarea {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      font: inherit;
+      color: inherit;
+      background: #fffdfa;
+    }
+    textarea { min-height: 92px; resize: vertical; }
+    .session-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 72vh;
+      overflow: auto;
+      padding: 12px 16px 16px;
+    }
+    .session-item {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.6);
+      padding: 12px;
+      cursor: pointer;
+    }
+    .session-item.active {
+      border-color: var(--accent);
+      background: var(--soft);
+    }
+    .preview {
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-top: 6px;
+    }
+    .memory-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .full { grid-column: 1 / -1; }
+    .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .chat {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 72vh;
+      overflow: auto;
+      padding: 16px;
+    }
+    .bubble {
+      max-width: 84%;
+      border-radius: 18px;
+      padding: 12px 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .user { background: var(--soft); align-self: flex-end; }
+    .assistant { background: var(--soft-2); align-self: flex-start; }
+    .empty {
+      color: var(--muted);
+      padding: 32px 0;
+      text-align: center;
+    }
+    @media (max-width: 1100px) {
+      .layout, .detail { grid-template-columns: 1fr; }
+      .session-list, .chat { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <div>
+        <h1>暖心搭子后台</h1>
+        <div class="sub">看自己的会话记录、编辑长期记忆，方便调试和持续优化机器人。</div>
+      </div>
+      <div class="actions">
+        <a class="btn ghost" href="/">回聊天页</a>
+        <button id="refresh-all-btn" type="button">刷新全部</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="card">
+        <div class="card-head">
+          <h2>会话列表</h2>
+          <span id="session-count" class="meta">0 条</span>
+        </div>
+        <div class="card-body">
+          <input id="search-input" type="text" placeholder="搜会话内容或 session id">
+        </div>
+        <div class="session-list" id="session-list"></div>
+      </div>
+
+      <div class="detail">
+        <div class="card">
+          <div class="card-head">
+            <h2>长期记忆</h2>
+            <button id="save-memory-btn" type="button">保存记忆</button>
+          </div>
+          <div class="card-body">
+            <div class="memory-grid">
+              <div class="full">
+                <div class="label">偏好称呼</div>
+                <input id="preferred-name" type="text" placeholder="比如：小周">
+              </div>
+              <div>
+                <div class="label">身份 / 角色</div>
+                <textarea id="identities" placeholder="每行一个"></textarea>
+              </div>
+              <div>
+                <div class="label">地点线索</div>
+                <textarea id="locations" placeholder="每行一个"></textarea>
+              </div>
+              <div>
+                <div class="label">喜欢</div>
+                <textarea id="likes" placeholder="每行一个"></textarea>
+              </div>
+              <div>
+                <div class="label">不喜欢 / 忌口</div>
+                <textarea id="dislikes" placeholder="每行一个"></textarea>
+              </div>
+              <div class="full">
+                <div class="label">自定义备注</div>
+                <textarea id="custom-notes" placeholder="每行一条"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>会话详情</h2>
+            <span id="detail-meta" class="meta">未选择会话</span>
+          </div>
+          <div class="chat" id="chat-detail">
+            <div class="empty">左侧选一条会话，这里会显示完整聊天。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const sessionListEl = document.getElementById("session-list");
+    const sessionCountEl = document.getElementById("session-count");
+    const searchInputEl = document.getElementById("search-input");
+    const chatDetailEl = document.getElementById("chat-detail");
+    const detailMetaEl = document.getElementById("detail-meta");
+    const saveMemoryBtn = document.getElementById("save-memory-btn");
+    const refreshAllBtn = document.getElementById("refresh-all-btn");
+
+    let sessions = [];
+    let activeSessionId = "";
+
+    function arrayToText(items) {
+      return (items || []).join("\n");
+    }
+
+    function textToArray(value) {
+      return value.split(/\n+/).map(item => item.trim()).filter(Boolean);
+    }
+
+    function setMemoryForm(memory) {
+      document.getElementById("preferred-name").value = memory.preferred_name || "";
+      document.getElementById("identities").value = arrayToText(memory.identities);
+      document.getElementById("locations").value = arrayToText(memory.locations);
+      document.getElementById("likes").value = arrayToText(memory.likes);
+      document.getElementById("dislikes").value = arrayToText(memory.dislikes);
+      document.getElementById("custom-notes").value = arrayToText(memory.custom_notes);
+    }
+
+    async function loadMemory() {
+      const response = await fetch("/api/admin/memory");
+      setMemoryForm(await response.json());
+    }
+
+    async function saveMemory() {
+      const payload = {
+        preferred_name: document.getElementById("preferred-name").value.trim(),
+        identities: textToArray(document.getElementById("identities").value),
+        locations: textToArray(document.getElementById("locations").value),
+        likes: textToArray(document.getElementById("likes").value),
+        dislikes: textToArray(document.getElementById("dislikes").value),
+        custom_notes: textToArray(document.getElementById("custom-notes").value)
+      };
+      const response = await fetch("/api/admin/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      setMemoryForm(await response.json());
+    }
+
+    function renderSessionList() {
+      sessionListEl.innerHTML = "";
+      sessionCountEl.textContent = `${sessions.length} 条`;
+
+      if (!sessions.length) {
+        sessionListEl.innerHTML = '<div class="empty">还没有匹配到的会话。</div>';
+        return;
+      }
+
+      for (const session of sessions) {
+        const item = document.createElement("div");
+        item.className = `session-item ${session.session_id === activeSessionId ? "active" : ""}`;
+        item.innerHTML = `
+          <div class="meta">${session.updated_at}</div>
+          <div class="preview">${session.last_user_text || session.preview || "(空会话)"}</div>
+          <div class="meta" style="margin-top:8px;">${session.turn_count} 条消息</div>
+        `;
+        item.addEventListener("click", async () => {
+          activeSessionId = session.session_id;
+          renderSessionList();
+          await loadSessionDetail(session.session_id);
+        });
+        sessionListEl.appendChild(item);
+      }
+    }
+
+    async function loadSessions() {
+      const q = encodeURIComponent(searchInputEl.value.trim());
+      const response = await fetch(`/api/admin/sessions?q=${q}`);
+      const data = await response.json();
+      sessions = data.sessions || [];
+      if (activeSessionId && !sessions.some(item => item.session_id === activeSessionId)) {
+        activeSessionId = "";
+      }
+      renderSessionList();
+    }
+
+    async function loadSessionDetail(sessionId) {
+      const response = await fetch(`/api/sessions/${sessionId}`);
+      const data = await response.json();
+
+      detailMetaEl.textContent = `${data.session_id} / ${data.updated_at}`;
+      chatDetailEl.innerHTML = "";
+
+      if (!data.turns.length) {
+        chatDetailEl.innerHTML = '<div class="empty">这个会话还是空的。</div>';
+        return;
+      }
+
+      for (const turn of data.turns) {
+        const bubble = document.createElement("div");
+        bubble.className = `bubble ${turn.role}`;
+        bubble.textContent = turn.text;
+        chatDetailEl.appendChild(bubble);
+      }
+      chatDetailEl.scrollTop = chatDetailEl.scrollHeight;
+    }
+
+    saveMemoryBtn.addEventListener("click", saveMemory);
+    refreshAllBtn.addEventListener("click", async () => {
+      await loadMemory();
+      await loadSessions();
+      if (activeSessionId) {
+        await loadSessionDetail(activeSessionId);
+      }
+    });
+    searchInputEl.addEventListener("input", () => { loadSessions(); });
+
+    (async () => {
+      await loadMemory();
+      await loadSessions();
+    })();
+  </script>
+</body>
+</html>
