@@ -9,6 +9,7 @@
 - 本地 JSON 会话存储
 - 长期记忆提取与后台手动编辑
 - 会话级 / 用户级长期记忆隔离
+- 私有人格提示注入
 - 自用聊天页 `/`
 - 自用后台 `/admin`
 - 公众号回调接入
@@ -59,6 +60,32 @@ python src/agent_server.py
 ```powershell
 python -m unittest discover -s tests -v
 ```
+
+## 私有人格注入
+
+如果你想让它更像“你本人”，不要把私有画像直接塞进公开仓库里。
+
+推荐直接执行：
+
+```powershell
+python scripts/import_codex_sync_persona.py
+```
+
+这会把私有画像拉到本地 `data/persona/`，并生成：
+
+- `data/persona/compiled_persona_prompt.md`
+
+服务启动时会自动读取这份文件。健康检查里也能看到：
+
+- `persona_prompt_loaded`
+
+如果你要把这份私有画像一起同步到服务器，继续用：
+
+```powershell
+python scripts/deploy_server.py sync --host 你的服务器IP --user root
+```
+
+现在部署脚本会顺带同步 `data/persona/`。
 
 ## 公众号接入
 
