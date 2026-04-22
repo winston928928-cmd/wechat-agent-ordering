@@ -1,6 +1,6 @@
 # WeChat Agent Ordering
 
-这是一个先做“能稳定聊天”的微信 Agent 原型。
+这是一个先做“能稳定聊天”的微信陪伴 Agent 原型。
 
 当前已经完成：
 
