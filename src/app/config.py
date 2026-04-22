@@ -60,7 +60,7 @@ class AppConfig:
             llm_history_turns=int(os.getenv("LLM_HISTORY_TURNS", "24")),
             agent_host=os.getenv("AGENT_HOST", "127.0.0.1").strip(),
             agent_port=int(os.getenv("AGENT_PORT", "8787")),
-            agent_name=os.getenv("AGENT_NAME", "暖心搭子").strip(),
+            agent_name=os.getenv("AGENT_NAME", "陪你说说话").strip(),
             session_dir=session_dir,
             memory_path=memory_path,
             channel_binding_path=channel_binding_path,
