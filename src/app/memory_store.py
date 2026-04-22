@@ -62,22 +62,27 @@ class UserMemory:
 
 class MemoryStore:
     def __init__(self, memory_path: Path) -> None:
-        self._memory_path = memory_path
-        self._memory_path.parent.mkdir(parents=True, exist_ok=True)
+        self._default_path = memory_path
+        self._profiles_dir = memory_path.parent / "profiles"
+        self._default_path.parent.mkdir(parents=True, exist_ok=True)
+        self._profiles_dir.mkdir(parents=True, exist_ok=True)
 
-    def get(self) -> UserMemory:
-        if not self._memory_path.exists():
+    def get(self, memory_id: str = "default") -> UserMemory:
+        path = self._path_for(memory_id)
+        if not path.exists():
             return UserMemory()
-        return UserMemory.from_dict(json.loads(self._memory_path.read_text(encoding="utf-8")))
+        return UserMemory.from_dict(json.loads(path.read_text(encoding="utf-8")))
 
-    def save(self, memory: UserMemory) -> None:
-        self._memory_path.write_text(
+    def save(self, memory: UserMemory, *, memory_id: str = "default") -> None:
+        path = self._path_for(memory_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
             json.dumps(memory.to_dict(), ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
 
-    def update_from_text(self, text: str) -> UserMemory:
-        memory = self.get()
+    def update_from_text(self, text: str, *, memory_id: str = "default") -> UserMemory:
+        memory = self.get(memory_id)
         changed = False
 
         preferred_name = first_match(NAME_PATTERNS, text)
@@ -92,10 +97,10 @@ class MemoryStore:
 
         if changed:
             memory.touch()
-            self.save(memory)
+            self.save(memory, memory_id=memory_id)
         return memory
 
-    def replace(self, payload: dict) -> UserMemory:
+    def replace(self, payload: dict, *, memory_id: str = "default") -> UserMemory:
         memory = UserMemory(
             preferred_name=str(payload.get("preferred_name", "")).strip(),
             identities=normalize_items(payload.get("identities")),
@@ -105,8 +110,25 @@ class MemoryStore:
             custom_notes=normalize_items(payload.get("custom_notes")),
             last_updated_at=utc_now_iso(),
         )
-        self.save(memory)
+        self.save(memory, memory_id=memory_id)
         return memory
+
+    def resolve_memory_id(self, memory_id: str | None) -> str:
+        normalized = (memory_id or "").strip()
+        return normalized or "default"
+
+    def _path_for(self, memory_id: str) -> Path:
+        normalized = self.resolve_memory_id(memory_id)
+        if normalized == "default":
+            return self._default_path
+
+        safe_memory_id = (
+            normalized.replace("/", "_")
+            .replace("\\", "_")
+            .replace(":", "_")
+            .replace(" ", "_")
+        )
+        return self._profiles_dir / f"{safe_memory_id}.json"
 
 
 def render_memory_prompt(memory: UserMemory) -> str:

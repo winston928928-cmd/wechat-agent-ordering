@@ -52,6 +52,7 @@
       text-decoration: none;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
     }
     .ghost {
       background: transparent;
@@ -83,6 +84,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
     }
     .card-head h2 { margin: 0; font-size: 16px; }
     .card-body { padding: 16px; }
@@ -164,10 +166,11 @@
     <div class="hero">
       <div>
         <h1>暖心搭子后台</h1>
-        <div class="sub">看自己的会话记录、编辑长期记忆，方便调试和持续优化机器人。</div>
+        <div class="sub">现在每个会话都能对应自己的长期记忆。选中会话后，右侧会切到那个用户的记忆视图。</div>
       </div>
       <div class="actions">
         <a class="btn ghost" href="/">回聊天页</a>
+        <button class="btn ghost" id="default-memory-btn" type="button">看默认记忆</button>
         <button id="refresh-all-btn" type="button">刷新全部</button>
       </div>
     </div>
@@ -179,7 +182,7 @@
           <span id="session-count" class="meta">0 条</span>
         </div>
         <div class="card-body">
-          <input id="search-input" type="text" placeholder="搜会话内容或 session id">
+          <input id="search-input" type="text" placeholder="搜会话内容、session id 或 memory id">
         </div>
         <div class="session-list" id="session-list"></div>
       </div>
@@ -187,7 +190,10 @@
       <div class="detail">
         <div class="card">
           <div class="card-head">
-            <h2>长期记忆</h2>
+            <div>
+              <h2>长期记忆</h2>
+              <div id="memory-scope" class="meta">当前作用域：default</div>
+            </div>
             <button id="save-memory-btn" type="button">保存记忆</button>
           </div>
           <div class="card-body">
@@ -241,9 +247,12 @@
     const detailMetaEl = document.getElementById("detail-meta");
     const saveMemoryBtn = document.getElementById("save-memory-btn");
     const refreshAllBtn = document.getElementById("refresh-all-btn");
+    const defaultMemoryBtn = document.getElementById("default-memory-btn");
+    const memoryScopeEl = document.getElementById("memory-scope");
 
     let sessions = [];
     let activeSessionId = "";
+    let currentMemoryId = "default";
 
     function arrayToText(items) {
       return (items || []).join("\n");
@@ -262,9 +271,12 @@
       document.getElementById("custom-notes").value = arrayToText(memory.custom_notes);
     }
 
-    async function loadMemory() {
-      const response = await fetch("/api/admin/memory");
-      setMemoryForm(await response.json());
+    async function loadMemory(memoryId = "default") {
+      currentMemoryId = memoryId || "default";
+      memoryScopeEl.textContent = `当前作用域：${currentMemoryId}`;
+      const response = await fetch(`/api/admin/memory?memory_id=${encodeURIComponent(currentMemoryId)}`);
+      const data = await response.json();
+      setMemoryForm(data.memory || {});
     }
 
     async function saveMemory() {
@@ -276,12 +288,15 @@
         dislikes: textToArray(document.getElementById("dislikes").value),
         custom_notes: textToArray(document.getElementById("custom-notes").value)
       };
-      const response = await fetch("/api/admin/memory", {
+      const response = await fetch(`/api/admin/memory?memory_id=${encodeURIComponent(currentMemoryId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      setMemoryForm(await response.json());
+      const data = await response.json();
+      currentMemoryId = data.memory_id || currentMemoryId;
+      memoryScopeEl.textContent = `当前作用域：${currentMemoryId}`;
+      setMemoryForm(data.memory || {});
     }
 
     function renderSessionList() {
@@ -299,12 +314,13 @@
         item.innerHTML = `
           <div class="meta">${session.updated_at}</div>
           <div class="preview">${session.last_user_text || session.preview || "(空会话)"}</div>
-          <div class="meta" style="margin-top:8px;">${session.turn_count} 条消息</div>
+          <div class="meta" style="margin-top:8px;">${session.turn_count} 条消息 / ${session.memory_id || "default"}</div>
         `;
         item.addEventListener("click", async () => {
           activeSessionId = session.session_id;
           renderSessionList();
           await loadSessionDetail(session.session_id);
+          await loadMemory(session.memory_id || "default");
         });
         sessionListEl.appendChild(item);
       }
@@ -325,7 +341,7 @@
       const response = await fetch(`/api/sessions/${sessionId}`);
       const data = await response.json();
 
-      detailMetaEl.textContent = `${data.session_id} / ${data.updated_at}`;
+      detailMetaEl.textContent = `${data.session_id} / ${data.updated_at} / ${data.memory_id || "default"}`;
       chatDetailEl.innerHTML = "";
 
       if (!data.turns.length) {
@@ -343,17 +359,29 @@
     }
 
     saveMemoryBtn.addEventListener("click", saveMemory);
+    defaultMemoryBtn.addEventListener("click", async () => {
+      activeSessionId = "";
+      detailMetaEl.textContent = "未选择会话";
+      chatDetailEl.innerHTML = '<div class="empty">当前查看的是默认记忆，不对应某个具体会话。</div>';
+      renderSessionList();
+      await loadMemory("default");
+    });
     refreshAllBtn.addEventListener("click", async () => {
-      await loadMemory();
       await loadSessions();
       if (activeSessionId) {
-        await loadSessionDetail(activeSessionId);
+        const session = sessions.find(item => item.session_id === activeSessionId);
+        if (session) {
+          await loadSessionDetail(activeSessionId);
+          await loadMemory(session.memory_id || "default");
+          return;
+        }
       }
+      await loadMemory("default");
     });
     searchInputEl.addEventListener("input", () => { loadSessions(); });
 
     (async () => {
-      await loadMemory();
+      await loadMemory("default");
       await loadSessions();
     })();
   </script>

@@ -36,11 +36,13 @@ class AgentApplication:
     def wechat_official_active_reply_enabled(self) -> bool:
         return self.wechat_official_api.enabled
 
-    def handle_chat(self, *, message: str, session_id: str | None) -> dict:
-        session = self.store.get_or_create(session_id)
+    def handle_chat(self, *, message: str, session_id: str | None, memory_id: str | None = None) -> dict:
+        session = self.store.get_or_create(session_id, memory_id=memory_id)
+        memory_id = session.memory_id or self.memory_store.resolve_memory_id(memory_id)
+        session.memory_id = memory_id
         session.add_turn("user", message)
         self.store.save(session)
-        memory = self.memory_store.update_from_text(message)
+        memory = self.memory_store.update_from_text(message, memory_id=memory_id)
 
         result = self.client.chat(session, memory=memory)
         session.latest_response_id = result.response_id
@@ -55,7 +57,11 @@ class AgentApplication:
 
     def handle_wechat_official_text(self, *, open_id: str, message: str) -> dict:
         session_id = self.channel_bindings.get_session_id("wechat_official", open_id)
-        handled = self.handle_chat(message=message, session_id=session_id)
+        handled = self.handle_chat(
+            message=message,
+            session_id=session_id,
+            memory_id=f"wechat_official:{open_id}",
+        )
         session = handled["session"]
         self.channel_bindings.set_session_id("wechat_official", open_id, session.session_id)
         return handled
@@ -127,7 +133,7 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/health":
-            memory = self.app.memory_store.get()
+            default_memory = self.app.memory_store.get("default")
             self._write_json(
                 HTTPStatus.OK,
                 {
@@ -137,7 +143,7 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
                     "model": self.app.config.llm_model,
                     "api_key_configured": bool(self.app.config.llm_api_key),
                     "memory_enabled": True,
-                    "memory_summary_available": bool(render_memory_prompt(memory)),
+                    "memory_summary_available": bool(render_memory_prompt(default_memory)),
                     "wechat_official_configured": bool(self.app.config.wechat_official_token),
                     "wechat_official_active_reply_enabled": self.app.wechat_official_active_reply_enabled,
                     "wechat_official_path": self.app.config.wechat_official_path,
@@ -162,7 +168,14 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/admin/memory":
-            self._write_json(HTTPStatus.OK, self.app.memory_store.get().to_dict())
+            memory_id = self.app.memory_store.resolve_memory_id(parse_qs(parsed.query).get("memory_id", ["default"])[0])
+            self._write_json(
+                HTTPStatus.OK,
+                {
+                    "memory_id": memory_id,
+                    "memory": self.app.memory_store.get(memory_id).to_dict(),
+                },
+            )
             return
 
         if parsed.path == "/api/admin/channel-bindings":
@@ -199,13 +212,14 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
             body = self._read_json_body()
             message = (body.get("message") or "").strip()
             session_id = (body.get("session_id") or "").strip() or None
+            memory_id = (body.get("memory_id") or "").strip() or None
 
             if not message:
                 self._write_json(HTTPStatus.BAD_REQUEST, {"error": "message_required"})
                 return
 
             try:
-                handled = self.app.handle_chat(message=message, session_id=session_id)
+                handled = self.app.handle_chat(message=message, session_id=session_id, memory_id=memory_id)
             except LLMClientError as exc:
                 self._write_json(
                     exc.status_code,
@@ -221,6 +235,7 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK,
                 {
                     "session_id": session.session_id,
+                    "memory_id": session.memory_id,
                     "assistant_message": result.assistant_text,
                     "response_id": result.response_id,
                     "model": result.model,
@@ -233,7 +248,14 @@ class AgentRequestHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/admin/memory":
             body = self._read_json_body()
-            self._write_json(HTTPStatus.OK, self.app.memory_store.replace(body).to_dict())
+            memory_id = self.app.memory_store.resolve_memory_id(parse_qs(parsed.query).get("memory_id", ["default"])[0])
+            self._write_json(
+                HTTPStatus.OK,
+                {
+                    "memory_id": memory_id,
+                    "memory": self.app.memory_store.replace(body, memory_id=memory_id).to_dict(),
+                },
+            )
             return
 
         if parsed.path == self.app.config.wechat_official_path:
