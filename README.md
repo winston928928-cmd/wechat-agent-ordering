@@ -13,8 +13,8 @@
 - 自用后台 `/admin`
 - 公众号回调接入
 - 公众号两种回复模式：
-  - 只配 `WECHAT_OFFICIAL_TOKEN`：被动回复
-  - 再配 `WECHAT_OFFICIAL_APP_ID` 和 `WECHAT_OFFICIAL_APP_SECRET`：先返回 `success`，再主动回发客服消息
+  - 默认 `passive`：直接被动回复，适合当前这种短对话场景
+  - `active`：先返回 `success`，再主动回发客服消息，适合模型较慢时使用
 
 ## 快速运行
 
@@ -72,13 +72,14 @@ $env:WECHAT_OFFICIAL_TOKEN="你在公众号后台配置的 token"
 
 - `/wechat/official/callback`
 
-### 开启更稳的主动回发
+### 可选：切到主动回发
 
 如果模型响应较慢，推荐再加这两个：
 
 ```powershell
 $env:WECHAT_OFFICIAL_APP_ID="你的公众号 AppID"
 $env:WECHAT_OFFICIAL_APP_SECRET="你的公众号 AppSecret"
+$env:WECHAT_OFFICIAL_REPLY_MODE="active"
 ```
 
 这样流程会变成：
